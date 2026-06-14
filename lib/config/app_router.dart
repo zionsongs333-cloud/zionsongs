@@ -16,7 +16,12 @@ class AppRouter {
         path: '/hymn/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
-          return HymnDetailScreen(hymnId: id);
+          final hymnsList = state.extra as List<Map<String, String>>; // <-- GET LIST FROM EXTRA
+          return HymnDetailScreen(
+  hymnId: id,
+  hymnsList: state.extra as List<Map<String, String>>,
+  currentUserRole: 'Admin',
+);
         },
       ),
       GoRoute(

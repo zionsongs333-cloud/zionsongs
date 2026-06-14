@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/hymn_provider.dart';
-import '../providers/favorites_provider.dart';
-import '../widgets/hymn_display_widget.dart';
 
 class HymnDetailScreen extends StatefulWidget {
   final String hymnId;
+  final List<Map<String, String>> hymnsList;
+  final String currentUserRole;
 
-  const HymnDetailScreen({Key? key, required this.hymnId}) : super(key: key);
+  const HymnDetailScreen({
+    Key? key,
+    required this.hymnId,
+    required this.hymnsList,
+    required this.currentUserRole,
+  }) : super(key: key);
 
   @override
   State<HymnDetailScreen> createState() => _HymnDetailScreenState();
@@ -15,165 +18,297 @@ class HymnDetailScreen extends StatefulWidget {
 
 class _HymnDetailScreenState extends State<HymnDetailScreen> {
   int _fontSize = 16;
-  bool _showChords = false;
-  int _transpose = 0;
+  bool _isPresentationMode = false;
+  double _baseScaleFactor = 1.0;
+  String _lyricsSearchQuery = '';
+  bool _isInfoExpanded = false;
+
+  bool _showEnglishColumn = true;
+  bool _showHindiColumn = true;
+  bool _showMalayalamColumn = true;
 
   @override
   Widget build(BuildContext context) {
-    final hymn = context.read<HymnProvider>().getHymnById(widget.hymnId);
+    final hymn = widget.hymnsList.firstWhere(
+      (h) => h['sr'] == widget.hymnId,
+      orElse: () => widget.hymnsList.first,
+    );
 
-    if (hymn == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Hymn Not Found')),
-        body: const Center(child: Text('Hymn not found')),
-      );
-    }
+    bool hasEnglish = (hymn['English'] ?? '').trim().isNotEmpty;
+    bool hasHindi = (hymn['Hindi'] ?? '').trim().isNotEmpty;
+    bool hasMalayalam = (hymn['Malayalam'] ?? '').trim().isNotEmpty;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(hymn.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            icon: Icon(
-              context.read<FavoritesProvider>().isFavorite(hymn.id)
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-            ),
-            onPressed: () {
-              context.read<FavoritesProvider>().toggleFavorite(hymn.id);
-              setState(() {});
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Hymn Metadata
-            Container(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (hymn.sr != null)
-                    Text('SR: ${hymn.sr}', style: const TextStyle(fontSize: 14)),
-                  if (hymn.year != null)
-                    Text('Year: ${hymn.year}', style: const TextStyle(fontSize: 14)),
-                  if (hymn.dedicated != null)
-                    Text('Dedicated: ${hymn.dedicated}', style: const TextStyle(fontSize: 14)),
-                  if (hymn.tempo != null)
-                    Text('Tempo: ${hymn.tempo}', style: const TextStyle(fontSize: 14)),
-                  if (hymn.key != null)
-                    Text('Key: ${hymn.key}', style: const TextStyle(fontSize: 14)),
-                  if (hymn.page != null)
-                    Text('Page: ${hymn.page}', style: const TextStyle(fontSize: 14)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Font Size Controls
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: () {
+    return GestureDetector(
+      onScaleStart: (details) => _baseScaleFactor = _fontSize.toDouble(),
+      onScaleUpdate: (details) => setState(() {
+        _fontSize = (_baseScaleFactor * details.scale).clamp(12.0, 42.0).toInt();
+      }),
+      child: Scaffold(
+        appBar: _isPresentationMode
+            ? null
+            : AppBar(
+                backgroundColor: Colors.purple,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                title: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TextField(
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText: 'Search matching keywords in lyric lines...',
+                      hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
+                      prefixIcon: Icon(Icons.search, color: Colors.white70, size: 18),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    onChanged: (val) {
                       setState(() {
-                        if (_fontSize > 12) _fontSize--;
+                        _lyricsSearchQuery = val.trim().toLowerCase();
                       });
                     },
                   ),
+                ),
+                actions: [
+  if (true)
+    IconButton(
+      icon: const Icon(Icons.edit, color: Colors.white),
+      tooltip: 'Edit Hymn',
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Edit Hymn - Coming Soon'),
+          ),
+        );
+      },
+    ),
+
+  IconButton(
+    icon: const Icon(Icons.slideshow, color: Colors.white),
+    onPressed: () => setState(() {
+      _isPresentationMode = true;
+    }),
+  ),
+],
+              ),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  if (!_isPresentationMode) ...[
+                    Container(
+                      width: double.infinity,
+                      color: Colors.purple.withOpacity(0.05),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            title: Text(
+                              hymn['title']!,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple,
+                              ),
+                            ),
+                            subtitle: Text('Page: ${hymn['page']} • Year: ${hymn['year']}'),
+                            trailing: IconButton(
+                              icon: Icon(
+                                _isInfoExpanded ? Icons.remove_circle_outline : Icons.add_circle_outline,
+                                color: Colors.purple,
+                              ),
+                              onPressed: () => setState(() => _isInfoExpanded = !_isInfoExpanded),
+                            ),
+                          ),
+                          if (_isInfoExpanded)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Key: ${hymn['Key'] ?? 'N/A'}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    'Style: ${hymn['style'] ?? 'N/A'}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    'Tempo: ${hymn['tempo'] ?? 'N/A'}',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                  ),
+                                  Text(
+                                    'Medley: ${hymn['medley'] ?? 'N/A'}',
+                                    style: const TextStyle(fontSize: 13, color: Colors.purple, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      color: Colors.white,
+                      child: Row(
+                        children: [
+                          const Text('Reveal Columns: ', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          if (!hasEnglish || !_showEnglishColumn)
+                            _buildRevealButton('ENG', () => setState(() => _showEnglishColumn = true)),
+                          if (!hasHindi || !_showHindiColumn)
+                            _buildRevealButton('HIN', () => setState(() => _showHindiColumn = true)),
+                          if (!hasMalayalam || !_showMalayalamColumn)
+                            _buildRevealButton('MAL', () => setState(() => _showMalayalamColumn = true)),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                  ],
                   Expanded(
-                    child: Slider(
-                      value: _fontSize.toDouble(),
-                      min: 12,
-                      max: 32,
-                      divisions: 20,
-                      label: '$_fontSize',
-                      onChanged: (value) {
-                        setState(() {
-                          _fontSize = value.toInt();
-                        });
-                      },
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (hasEnglish && _showEnglishColumn)
+                            Expanded(
+                              child: _buildLyricsViewportColumn(
+                                'ENGLISH',
+                                hymn['English']!,
+                                () => setState(() => _showEnglishColumn = false),
+                              ),
+                            ),
+                          if (hasEnglish &&
+                              _showEnglishColumn &&
+                              ((hasHindi && _showHindiColumn) || (hasMalayalam && _showMalayalamColumn)))
+                            _buildVerticalDivider(),
+                          if (hasHindi && _showHindiColumn)
+                            Expanded(
+                              child: _buildLyricsViewportColumn(
+                                'HINDI',
+                                hymn['Hindi']!,
+                                () => setState(() => _showHindiColumn = false),
+                              ),
+                            ),
+                          if (hasHindi && _showHindiColumn && (hasMalayalam && _showMalayalamColumn))
+                            _buildVerticalDivider(),
+                          if (hasMalayalam && _showMalayalamColumn)
+                            Expanded(
+                              child: _buildLyricsViewportColumn(
+                                'MALAYALAM',
+                                hymn['Malayalam']!,
+                                () => setState(() => _showMalayalamColumn = false),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () {
-                      setState(() {
-                        if (_fontSize < 32) _fontSize++;
-                      });
-                    },
                   ),
                 ],
               ),
-            ),
-            // Transpose Controls
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Text('Transpose:'),
-                  IconButton(
-                    icon: const Icon(Icons.remove),
-                    onPressed: () {
-                      setState(() {
-                        if (_transpose > -12) _transpose--;
-                      });
-                    },
+              if (_isPresentationMode)
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: FloatingActionButton.small(
+                    backgroundColor: Colors.purple.withOpacity(0.6),
+                    child: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => setState(() {
+                      _isPresentationMode = false;
+                    }),
                   ),
-                  SizedBox(
-                    width: 50,
-                    child: Text(
-                      _transpose > 0 ? '+$_transpose' : '$_transpose',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () {
-                      setState(() {
-                        if (_transpose < 12) _transpose++;
-                      });
-                    },
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(
-                      _showChords ? Icons.visibility : Icons.visibility_off,
-                    ),
-                    tooltip: _showChords ? 'Hide Chords' : 'Show Chords',
-                    onPressed: () {
-                      setState(() {
-                        _showChords = !_showChords;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Hymn Display
-            HymnDisplayWidget(
-              hymn: hymn,
-              fontSize: _fontSize,
-              showChords: _showChords,
-              transpose: _transpose,
-            ),
-            const SizedBox(height: 32),
-          ],
+                ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLyricsViewportColumn(String title, String lyricsText, VoidCallback onClose) {
+    List<String> textLines = lyricsText.split('\n');
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!_isPresentationMode)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                  onPressed: onClose,
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          ...textLines.map((line) {
+            bool matchesSearch = _lyricsSearchQuery.isNotEmpty && line.toLowerCase().contains(_lyricsSearchQuery);
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+              decoration: BoxDecoration(
+                color: matchesSearch ? Colors.yellow.withOpacity(0.4) : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                line,
+                style: TextStyle(
+                  fontSize: _fontSize.toDouble(),
+                  color: Colors.black,
+                  height: 1.6,
+                ),
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRevealButton(String label, VoidCallback onOpen) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6.0),
+      child: TextButton.icon(
+        style: TextButton.styleFrom(
+          backgroundColor: Colors.purple.shade50,
+          visualDensity: VisualDensity.compact,
+        ),
+        icon: const Icon(Icons.add, size: 14, color: Colors.purple),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Colors.purple,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        onPressed: onOpen,
+      ),
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(
+      width: 1,
+      height: 1200,
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      color: Colors.grey.shade200,
     );
   }
 }

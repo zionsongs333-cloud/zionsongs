@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/hymn_model.dart';
 
 class HymnProvider extends ChangeNotifier {
+  String sortBy = 'title';
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   List<HymnModel> _hymns = [];
   List<HymnModel> _filteredHymns = [];

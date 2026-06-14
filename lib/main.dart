@@ -29,7 +29,8 @@ Future<void> main() async {
   await Hive.openBox('favorites');
   await Hive.openBox('viewlists');
   await Hive.openBox('medleys');
-  
+ 
+
   runApp(const ZionSongsApp());
 }
 

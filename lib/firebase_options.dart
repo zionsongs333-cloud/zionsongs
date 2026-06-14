@@ -33,13 +33,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_WEB_API_KEY',
-    appId: 'YOUR_WEB_APP_ID',
-    messagingSenderId: 'YOUR_WEB_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    databaseURL: 'https://YOUR_PROJECT_ID.firebaseio.com',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyD14u92ae9Ki2vtsXvvffEr0N2tfnVmCxc',
+    appId: '1:1018034880390:web:34e38ca4afec697ce23607',
+    messagingSenderId: '1018034880390',
+    projectId: 'zion-songs-f03ad',
+    authDomain: 'zion-songs-f03ad.firebaseapp.com',
+    databaseURL: 'https://zion-songs-f03ad.firebaseio.com',
+    storageBucket: 'zion-songs-f03ad.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
