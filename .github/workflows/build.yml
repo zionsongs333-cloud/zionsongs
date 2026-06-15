@@ -28,7 +28,7 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1024m -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8"
 
       - name: Find APK Location
         run: find build/app/outputs/flutter-apk/ -name "*.apk"
