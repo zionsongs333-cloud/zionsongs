@@ -1,0 +1,1 @@
+import 'package:flutter/material.dart'; class HymnDisplayWidget extends StatelessWidget { const HymnDisplayWidget({super.key, required dynamic hymn, required int fontSize, required bool showChords, required int transpose}); @override Widget build(BuildContext context) { return Container(); } }

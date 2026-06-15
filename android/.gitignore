@@ -1,0 +1,23 @@
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks
+# --- ADD THESE LINES TO FIX YOUR GITHUB PUSH ERROR ---
+android/app/build/
+build/
+.dart_tool/
+.gradle/
+*.apk
+*.aab
+*.jar
+# -----------------------------------------------------

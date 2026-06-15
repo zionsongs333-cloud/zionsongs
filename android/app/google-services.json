@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1018034880390",
+    "project_id": "zion-songs-f03ad",
+    "storage_bucket": "zion-songs-f03ad.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1018034880390:android:7281336fb7d028afe23607",
+        "android_client_info": {
+          "package_name": "com.zion.songs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMcOnPFOfwdxJuCr-fRM-SnUiNQO_G03A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
