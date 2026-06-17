@@ -128,7 +128,7 @@ class _HymnDetailScreenState extends State<HymnDetailScreen> {
                                   hymn['title'] ?? 'No Title',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.purple,
+                                    color: Colors.blue,
                                   ),
                                 ),
                                 subtitle: Text('Page: ${hymn['page'] ?? 'N/A'} • Year: ${hymn['year'] ?? 'N/A'}'),

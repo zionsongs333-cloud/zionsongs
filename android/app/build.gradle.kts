@@ -30,6 +30,8 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
+
+        
     }
 
     buildTypes {

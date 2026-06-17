@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter_transliterator/flutter_transliterator.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -8,33 +7,24 @@ import 'hymn_detail_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
-import 'package:flutter/material.dart';
+import '../widgets/hymn_options_sheet.dart'; // Keep only 1 import
 
 String _toSimpleSound(String text) {
-  return text
-    .toLowerCase()
-    .replaceAll(RegExp(r'[^\w\s\u0900-\u097F]'), ' ')
-    .replaceAll(RegExp(r'\s+'), ' ')
-    .trim();
+  return text.toLowerCase().replaceAll(RegExp(r'[^\w\s\u0900-\u097F]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
 String _romanToHindi(String text) {
-  return FlutterTransliterator().transliterate(
-    text: text,
-    toLanguageCode: 'hi',
-  );
+  return FlutterTransliterator().transliterate(text: text, toLanguageCode: 'hi');
 }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _currentUserRole = 'Admin'; 
   String _userChurchScope = 'Grace Church Mumbai';
   String _searchQuery = '';
   String _filterKey = 'All';
@@ -42,141 +32,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   String _filterYear = 'All';
   String _currentSortTag = 'sr';
   bool _isAscending = true;
-bool _darkMode = true;
+  bool _darkMode = true;
 
-
-final ScrollController _songScrollController = ScrollController();
+  final ScrollController _songScrollController = ScrollController();
   final List<String> _alphabet = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
+  // Lists - start empty, load from phone
   List<String> userFavorites = [];
-
-final String userId = 'default_user';
- List<Map<String, dynamic>> churchViewLists = [];
-  List<Map<String, dynamic>> publicMedleys = [
-    {'name': 'Cross & Grace Medley', 'songs': ['1', '3']},
-  ];
+  List<Map<String, dynamic>> churchViewLists = [];
+  List<Map<String, dynamic>> publicMedleys = []; // DELETE hardcoded default
 
   List<Map<String, dynamic>> staticExcelHymns = [];
   bool _loadingSongs = true;
-  
-  Future<void> _loadFavorites() async {
-  final doc = await FirebaseFirestore.instance
-      .collection('favorites')
-      .doc('default_user')
-      .get();
-
-  if (doc.exists) {
-    setState(() {
-      userFavorites =
-          List<String>.from(doc.data()?['songs'] ?? []);
-    });
-  }
-}
-
-Future<void> _loadViewLists() async {
-  final snapshot = await FirebaseFirestore.instance
-      .collection('viewlists')
-      .get();
-
-  final lists = snapshot.docs.map((d) {
-    return {
-      'id': d.id,
-      'name': d['name'],
-      'church': d['church'],
-      'songs': List<String>.from(d['songs'] ?? []),
-    };
-  }).toList();
-
-  setState(() {
-    churchViewLists = lists;
-  });
-}
-
-Future<void> _saveViewList(
-  String name,
-  List<String> songs,
-) async {
-  await FirebaseFirestore.instance
-      .collection('viewlists')
-      .doc(name)
-      .set({
-    'name': name,
-    'church': _userChurchScope,
-    'songs': songs,
-  });
-
-  _loadViewLists();
-}
-
-
-Future<void> _loadSongsFromFirestore() async {
-  final snapshot =
-      await FirebaseFirestore.instance.collection('hymns').get();
-      print("Firestore docs found: ${snapshot.docs.length}");
-
-  final songs = snapshot.docs.map((doc) {
-    print(doc.data());
-    final data = doc.data();
-
-    return {
-      'sr': data['sr']?.toString() ?? '',
-      'title': data['title']?.toString() ?? '',
-      'Key': data['Key']?.toString() ?? '',
-      'Dedicated': data['Dedicated']?.toString() ?? '',
-      'year': data['year']?.toString() ?? '',
-      'page': data['page']?.toString() ?? '',
-      'English': (data['lyrics']?['English'] ?? '').toString(),
-'Hindi': (data['lyrics']?['Hindi'] ?? '').toString(),
-'Malayalam': (data['lyrics']?['Malayalam'] ?? '').toString(),
-'searchText': data['searchText']?.toString() ?? '',
-    };
-  }).toList();
-
-  setState(() {
-    staticExcelHymns = songs;
-     _loadingSongs = false;
-  });
-  print(staticExcelHymns.first);
-}
-Future<void> _saveFavorites() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc('default_user')
-          .set({
-        'songs': userFavorites,
-      }, SetOptions(merge: true));
-    } catch (e) {
-      print("Error saving favorites: $e");
-    }
-  }
 
   @override
   void initState() {
     super.initState();
     print("HOME SCREEN OPENED");
     _tabController = TabController(length: 4, vsync: this);
-
-    _loadSongsFromFirestore();
-    _loadFavorites();
-    _loadViewLists();
-    _loadMedleys();
+    _loadSongsFromFirestore(); // songs from cloud
+    _loadAllFromPhone(); // NEW - loads fav + view + medley
   }
 
-  // Loads your View Lists from Firestore on startup
- 
-  // Loads your Medleys from Firestore on startup
-  Future<void> _loadMedleys() async {
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc('default_user').get();
-      if (doc.exists && doc.data() != null && doc.data()!['medleys'] != null) {
-        setState(() {
-          publicMedleys = List<Map<String, dynamic>>.from(doc.data()!['medleys']);
-        });
-      }
-    } catch (e) {
-      print("Error loading Medleys: $e");
-    }
+  // KEEP: Load songs from Firestore
+  Future<void> _loadSongsFromFirestore() async {
+    final snapshot = await FirebaseFirestore.instance.collection('hymns').get();
+    print("Firestore docs found: ${snapshot.docs.length}");
+
+    final songs = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'sr': data['sr']?.toString() ?? '',
+        'title': data['title']?.toString() ?? '',
+        'Key': data['Key']?.toString() ?? '',
+        'Dedicated': data['Dedicated']?.toString() ?? '',
+        'year': data['year']?.toString() ?? '',
+        'page': data['page']?.toString() ?? '',
+        'English': (data['lyrics']?['English'] ?? '').toString(),
+        'Hindi': (data['lyrics']?['Hindi'] ?? '').toString(),
+        'Malayalam': (data['lyrics']?['Malayalam'] ?? '').toString(),
+        'searchText': data['searchText']?.toString() ?? '',
+      };
+    }).toList();
+
+    setState(() {
+      staticExcelHymns = songs;
+      _loadingSongs = false;
+    });
+  }
+
+  // ADD: Load all 3 lists from phone - instant
+  Future<void> _loadAllFromPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    userFavorites = prefs.getStringList('favorites_local') ?? [];
+    
+    final viewSaved = prefs.getString('viewLists_$_userChurchScope');
+    churchViewLists = viewSaved != null ? List<Map<String, dynamic>>.from(jsonDecode(viewSaved)) : [];
+    
+    final medleySaved = prefs.getString('medleys_global');
+    publicMedleys = medleySaved != null ? List<Map<String, dynamic>>.from(jsonDecode(medleySaved)) : [];
+    
+    setState(() {});
+  }
+
+  // ADD: Save all 3 lists to phone - called by sheet
+  Future<void> _saveAllToPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('favorites_local', userFavorites);
+    await prefs.setString('viewLists_$_userChurchScope', jsonEncode(churchViewLists));
+    await prefs.setString('medleys_global', jsonEncode(publicMedleys));
+    setState(() {});
   }
 
   void _resetAllFilters() {
@@ -186,50 +112,18 @@ Future<void> _saveFavorites() async {
     });
   }
 
-  void _createNewListDialog(String listType) {
-    if (_currentUserRole == 'Viewer' && listType == 'Medley') {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('❌ Error: Viewers cannot create Public Medleys.')));
-      return;
-    }
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Create New $listType'),
-        content: TextField(controller: controller, decoration: const InputDecoration(hintText: 'Enter list name...')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                setState(() {
-                  if (listType == 'View Listing') {
-                    churchViewLists.add({'name': controller.text.trim(), 'church': _userChurchScope, 'songs': <String>[]});
-                  } else if (listType == 'Medley') {
-                    publicMedleys.add({'name': controller.text.trim(), 'songs': <String>[]});
-                  }
-                });
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
+  void _toggleSort(String tag) {
+    setState(() {
+      if (_currentSortTag == tag) {
+        _isAscending = !_isAscending;
+      } else {
+        _currentSortTag = tag;
+        _isAscending = true;
+      }
+    });
   }
-void _toggleSort(String tag) {
-  setState(() {
-    if (_currentSortTag == tag) {
-      _isAscending = !_isAscending;
-    } else {
-      _currentSortTag = tag;
-      _isAscending = true;
-    }
-  });
-}
 
-void _jumpToAlphabetLetter(String letter, List<Map<String, dynamic>> contextHymnsList) {
+  void _jumpToAlphabetLetter(String letter, List<Map<String, dynamic>> contextHymnsList) {
     int targetIdx = contextHymnsList.indexWhere((item) {
       if (letter == '#') return true;
       final title = (item['title'] ?? '').toString().trim().toUpperCase();
@@ -245,14 +139,10 @@ void _jumpToAlphabetLetter(String letter, List<Map<String, dynamic>> contextHymn
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No hymns start with "$letter"'),
-          duration: const Duration(milliseconds: 400),
-        ),
+        SnackBar(content: Text('No hymns start with "$letter"'), duration: const Duration(milliseconds: 400)),
       );
     }
   }
-
 
  @override
   Widget build(BuildContext context) {
@@ -293,62 +183,22 @@ void _jumpToAlphabetLetter(String letter, List<Map<String, dynamic>> contextHymn
 
     return Scaffold(
       backgroundColor: bodyBgColor, // Set overall body to the light background
-      floatingActionButton: (_currentUserRole == 'Admin' || _currentUserRole == 'Super Admin')
-          ? FloatingActionButton(
-              backgroundColor: constHeaderBg,
-              child: const Icon(Icons.add, color: Colors.white),
-              onPressed: () async {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _currentUserRole == 'Super Admin'
-                          ? 'Import JSON feature will be connected here'
-                          : 'Add New Hymn feature coming soon',
-                    ),
-                  ),
-                );
-              },
-            )
-          : null,
+     // floatingActionButton removed - sheet handles all
       appBar: AppBar(
-        title: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _currentUserRole,
-            dropdownColor: constHeaderBg,
-            style: const TextStyle(color: constHeaderTextColor, fontWeight: FontWeight.bold, fontSize: 16),
-            items: ['Viewer', 'Admin', 'Super Admin']
-                .map((r) => DropdownMenuItem(value: r, child: Text('Role: $r')))
-                .toList(),
-            onChanged: (val) => setState(() => _currentUserRole = val!),
-          ),
-        ),
-        backgroundColor: constHeaderBg, // Locked to your dark color
-        actions: [
-          IconButton(
-            icon: Icon(
-              _darkMode ? Icons.wb_sunny : Icons.wb_sunny_outlined,
-              color: constHeaderTextColor,
-            ),
-            onPressed: () {
-              setState(() {
-                _darkMode = !_darkMode; // Swaps between your two light shade options for the body
-              });
-            },
-          ),
-          if (_currentUserRole == 'Super Admin')
-            IconButton(
-              icon: const Icon(Icons.history, color: constHeaderTextColor),
-              tooltip: "Restore Version History",
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('⏳ Restoring to last valid backup log point...')),
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: constHeaderTextColor),
-            tooltip: "Reset All Filters",
-            onPressed: _resetAllFilters,
-          ),
-        ],
+  title: const Text('Hymns'),
+  backgroundColor: constHeaderBg,
+  actions: [
+    IconButton(
+      icon: Icon(_darkMode ? Icons.wb_sunny : Icons.wb_sunny_outlined, color: constHeaderTextColor),
+      onPressed: () => setState(() => _darkMode = !_darkMode),
+    ),
+    IconButton(
+      icon: const Icon(Icons.refresh, color: constHeaderTextColor),
+      tooltip: "Reset All Filters",
+      onPressed: _resetAllFilters,
+    ),
+  ],
+
         bottom: TabBar(
           indicatorColor: Colors.amber, // High contrast pop against the dark header
           indicatorWeight: 3,
@@ -598,167 +448,24 @@ Expanded(
                             }
                           }
 
-                          return InkWell(
-                            onTap: () => context.push('/hymn/${item['sr']}', extra: staticExcelHymns),
-                         onLongPress: () {
-  showModalBottomSheet(
-    context: context,
-    builder: (_) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.favorite),
-            title: const Text('Add to Favorites'),
-            onTap: () {
-              setState(() {
-                if (!userFavorites.contains(item['sr'])) {
-                  userFavorites.add(item['sr']);
-                }
-              });
-              _saveFavorites();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${item['title']} added to Favorites')),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.list_alt),
-            title: const Text('Add to Existing View List'),
-            onTap: () {
-              Navigator.pop(context);
-              if (churchViewLists.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('No View Lists exist yet. Create one first!')),
-                );
-                return;
-              }
-              showDialog(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('Select a View List'),
-                  content: SizedBox(
-                    width: double.maxFinite,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: churchViewLists.length,
-                      itemBuilder: (context, index) {
-                        final list = churchViewLists[index];
-                        return ListTile(
-                          leading: const Icon(Icons.playlist_add_check),
-                          title: Text(list['name'] ?? 'Unnamed List'),
-                          onTap: () {
-                            setState(() {
-                              if (list['songs'] == null) list['songs'] = [];
-                              if (!list['songs'].contains(item['sr'])) {
-                                list['songs'].add(item['sr']);
-                              }
-                            });
-                            _saveListsToStorage();
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${item['title']} added to ${list['name']}')),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.playlist_add),
-            title: const Text('Create New View List'),
-            onTap: () {
-              Navigator.pop(context);
-              _showCreateDialog(context, item, isMedley: false);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.library_music),
-            title: const Text('Add to Existing Medley List'),
-            onTap: () {
-              Navigator.pop(context);
-              if (publicMedleys.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('No Medley Lists exist yet. Create one first!')),
-                );
-                return;
-              }
-              showDialog(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('Select a Medley'),
-                  content: SizedBox(
-                    width: double.maxFinite,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: publicMedleys.length,
-                      itemBuilder: (context, index) {
-                        final medley = publicMedleys[index];
-                        return ListTile(
-                          leading: const Icon(Icons.music_note),
-                          title: Text(medley['name'] ?? 'Unnamed Medley'),
-                          onTap: () {
-                            setState(() {
-                              if (medley['songs'] == null) medley['songs'] = [];
-                              if (!medley['songs'].contains(item['sr'])) {
-                                medley['songs'].add(item['sr']);
-                              }
-                            });
-                            _saveListsToStorage();
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${item['title']} added to ${medley['name']}')),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.playlist_add_circle),
-            title: const Text('Create New Medley List'),
-            onTap: () {
-              Navigator.pop(context);
-              _showCreateDialog(context, item, isMedley: true);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.share, color: Color(0xFF0D47A1)),
-            title: const Text('Share PDF via WhatsApp / Telegram', style: TextStyle(color: Color(0xFF0D47A1))),
-            onTap: () {
-              Navigator.pop(context);
-              _handlePdfAction(item, shareViaSheet: true);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.picture_as_pdf, color: Color(0xFF0D47A1)),
-            title: const Text('Export PDF to Device Storage', style: TextStyle(color: Color(0xFF0D47A1))),
-            onTap: () {
-              Navigator.pop(context);
-              _handlePdfAction(item, shareViaSheet: false);
-            },
-          ),
-        ],
-      ),
+                        return InkWell(
+  onTap: () => context.push('/hymn/${item['sr']}', extra: staticExcelHymns),
+  onLongPress: () => showHymnOptionsSheet(
+  context: context, 
+  item: item, 
+  userFavorites: userFavorites, 
+  churchViewLists: churchViewLists, 
+  publicMedleys: publicMedleys, 
+  userChurchScope: _userChurchScope, 
+  onSaveLists: _saveAllToPhone, // must return Future<void>
+),
+  child: Container(
+    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
     ),
-  );
-},
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-                              ),
-                              child: Column(
+    child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
@@ -852,11 +559,7 @@ Widget _buildChurchListingTab() {
   return Column(children: [
     ListTile(
       title: Text('Church View Listing Scope: $_userChurchScope', style: const TextStyle(fontWeight: FontWeight.bold)),
-      trailing: ElevatedButton.icon(
-        onPressed: () => _createNewListDialog('View Listing'), 
-        icon: const Icon(Icons.add), 
-        label: const Text('New List')
-      ),
+      // trailing removed - use long press sheet to create
     ),
     Expanded(
       child: visibleLists.isEmpty
@@ -914,11 +617,7 @@ Widget _buildMedleysTab() {
           'Public Medleys (Shared Globally with All Users)',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        trailing: ElevatedButton.icon(
-          onPressed: () => _createNewListDialog('Medley'),
-          icon: const Icon(Icons.add),
-          label: const Text('New Medley'),
-        ),
+        // trailing removed - use long press sheet to create
       ),
       Expanded(
         child: publicMedleys.isEmpty
@@ -975,22 +674,9 @@ Widget _buildHeaderCell(String label, String tag) {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: _darkMode ? Colors.white : Colors.purple,
-          ),
-        ),
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _darkMode ? Colors.white : Colors.purple)),
         if (_currentSortTag == tag)
-          Icon(
-            _isAscending
-                ? Icons.arrow_drop_up
-                : Icons.arrow_drop_down,
-            size: 16,
-            color: _darkMode ? Colors.white : Colors.purple,
-          ),
+          Icon(_isAscending ? Icons.arrow_drop_up : Icons.arrow_drop_down, size: 16, color: _darkMode ? Colors.white : Colors.purple),
       ],
     ),
   );
@@ -1089,82 +775,5 @@ Widget _buildFilterHeaderCell(String label, String tag, String activeValue, List
         SnackBar(content: Text('Failed to generate PDF: $e')),
       );
     }
-  }
-
-void _showCreateDialog(BuildContext context, Map<String, dynamic> item, {required bool isMedley}) {
-    final TextEditingController listNameController = TextEditingController();
-    final String listTypeLabel = isMedley ? 'Medley' : 'View List';
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Create New $listTypeLabel'),
-        content: TextField(
-          controller: listNameController,
-          decoration: const InputDecoration(
-            hintText: 'Enter name (e.g., Sunday Service)',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final String listName = listNameController.text.trim();
-              if (listName.isNotEmpty) {
-                setState(() {
-                  if (isMedley) {
-                    publicMedleys.add({
-                      'name': listName,
-                      'songs': [item['sr']],
-                    });
-                  } else {
-                    churchViewLists.add({
-                      'id': listName,
-                      'name': listName,
-                      'church': _userChurchScope,
-                      'songs': [item['sr']],
-                    });
-                  }
-                });
-                
-                _saveListsToStorage();
-
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Created "$listName" and added ${item['title']}')),
-                );
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _saveListsToStorage() async {
-    try {
-      // 1. Save Medleys and Favorites inside the user profile document
-      await FirebaseFirestore.instance.collection('users').doc('default_user').set({
-        'songs': userFavorites,
-        'medleys': publicMedleys,
-      }, SetOptions(merge: true));
-
-      // 2. Save your View Lists into your dedicated 'viewlists' collection matching your load function
-      for (var list in churchViewLists) {
-        final String docId = list['id'] ?? list['name'] ?? 'unnamed_list';
-        await FirebaseFirestore.instance.collection('viewlists').doc(docId).set({
-          'name': list['name'] ?? 'Unnamed List',
-          'church': list['church'] ?? _userChurchScope,
-          'songs': list['songs'] ?? <String>[],
-        });
-      }
-      print("Lists successfully locked and saved to Firestore collections!");
-    } catch (e) {
-      print("Error saving lists to database: $e");
-    }
-  }
+  }  
 }
