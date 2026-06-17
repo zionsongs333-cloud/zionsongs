@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
-import 'firebase_options.dart';
 import 'providers/theme_provider.dart';
+import 'firebase_options.dart';
 import 'providers/language_provider.dart';
 import 'providers/hymn_provider.dart';
 import 'providers/favorites_provider.dart';
@@ -29,17 +29,10 @@ Future<void> main() async {
   await Hive.openBox('favorites');
   await Hive.openBox('viewlists');
   await Hive.openBox('medleys');
- 
 
-  runApp(const ZionSongsApp());
-}
-
-class ZionSongsApp extends StatelessWidget {
-  const ZionSongsApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  // Wrap entire app with MultiProvider
+  runApp(
+    MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
@@ -48,20 +41,29 @@ class ZionSongsApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ViewListProvider()),
         ChangeNotifierProvider(create: (_) => MedleyProvider()),
       ],
-      child: Consumer2<ThemeProvider, LanguageProvider>(
-        builder: (context, themeProvider, languageProvider, _) {
-          return MaterialApp.router(
-            title: 'Zion Songs',
-            theme: themeProvider.lightTheme,
-            darkTheme: themeProvider.darkTheme,
-            themeMode: themeProvider.themeMode,
-            locale: Locale(languageProvider.currentLanguage),
-            supportedLocales: const [Locale('en'), Locale('hi')],
-            routerConfig: AppRouter.router,
-            debugShowCheckedModeBanner: false,
-          );
-        },
-      ),
+      child: const ZionSongsApp(),
+    ),
+  );
+}
+
+class ZionSongsApp extends StatelessWidget {
+  const ZionSongsApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<ThemeProvider, LanguageProvider>(
+      builder: (context, themeProvider, languageProvider, _) {
+        return MaterialApp.router(
+          title: 'Zion Songs',
+          theme: themeProvider.lightTheme, 
+          darkTheme: themeProvider.darkTheme, 
+          themeMode: themeProvider.themeMode,
+          locale: Locale(languageProvider.currentLanguage), // ADDED MISSING COMMA HERE
+          supportedLocales: const [Locale('en'), Locale('hi')],
+          routerConfig: AppRouter.router,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }
