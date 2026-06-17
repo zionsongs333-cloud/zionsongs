@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
-  Color _primaryColor = const Color(0xFF6D28D9); // default purple
+  Color _primaryColor = const Color(0xFF4472C4); // CHANGED: Excel Blue as default
   late SharedPreferences _prefs;
 
   static const Color darkZoneColor = Color(0xFF312E81);
@@ -40,6 +40,18 @@ class ThemeProvider extends ChangeNotifier {
     await _prefs.setInt('primaryColor', newColor.value);
     notifyListeners();
   }
+
+  // NEW: Excel glossy color palette
+  List<Color> get themeColors => [
+    const Color(0xFF4472C4), // Excel Blue
+    const Color(0xFFED7D31), // Excel Orange  
+    const Color(0xFFA5A5A5), // Excel Grey
+    const Color(0xFFFFC000), // Excel Yellow
+    const Color(0xFF5B9BD5), // Excel Light Blue
+    const Color(0xFF70AD47), // Excel Green
+    const Color(0xFF264478), // Excel Dark Blue
+    const Color(0xFF9E480E), // Excel Brown
+  ];
 
   // Zones: header/footer/sidepanel/index header
   Color getZoneBg(BuildContext context) {
@@ -91,7 +103,7 @@ class ThemeProvider extends ChangeNotifier {
         center: Alignment.center,
         radius: 1.2, // pushes dark to corners/edges
         colors: [lightCenter, baseColor, darkEdge],
-        stops: const [0.0, 0.6, 1.0], // FIXED: was [0.0, 116, 0.2]
+        stops: const [0.0, 0.6, 1.0],
       ),
     );
   }
