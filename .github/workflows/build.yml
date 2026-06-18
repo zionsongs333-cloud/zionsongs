@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  GRADLE_OPTS: "-Xmx6g -XX:MaxMetaspaceSize=2g -Dorg.gradle.jvmargs=-Xmx6g -Dorg.gradle.java.installations.paths=/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64"
+  GRADLE_OPTS: "-Xmx6g -XX:MaxMetaspaceSize=2g -Dorg.gradle.jvmargs=-Xmx6g"
   FLUTTER_VERBOSE: "true"
 
 jobs:
@@ -26,12 +26,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'  # Changed back to 17
+          java-version: '17'
 
-      - name: Install Flutter
+      - name: Install Flutter 3.27.4
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
+          flutter-version: '3.27.4'
           channel: 'stable'
           cache: true
 
@@ -55,3 +55,4 @@ jobs:
           name: zionsongs-arm64-debug
           path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
           retention-days: 7
+        
