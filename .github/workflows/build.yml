@@ -48,6 +48,7 @@ jobs:
 
       - name: Build APK
         run: |
+          set -o pipefail
           flutter build apk --debug 2>&1 | tee build.log
           echo "=== CHECKING APK LOCATION ==="
           find build -name "*.apk" -type f

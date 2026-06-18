@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.zion_songs"
+    namespace = "com.example.zion.songs"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
     
@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.zion_songs"
+        applicationId = "com.zion.songs"
         minSdk = 23
         targetSdk = 35
         versionCode = flutter.versionCode
