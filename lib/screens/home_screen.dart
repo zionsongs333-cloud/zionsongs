@@ -14,7 +14,6 @@ import '../widgets/hymn_options_sheet.dart';
 String _toSimpleSound(String text) {
   return text.toLowerCase().replaceAll(RegExp(r'[^\w\s\u0900-\u097F]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
 }
-
 String _romanToHindi(String text) {
   return FlutterTransliterator().transliterate(text: text, toLanguageCode: 'hi');
 }
@@ -55,28 +54,30 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadAllFromPhone();
   }
 
+  // Removed the extra List<DocumentSnapshot> songs line - you don't need it
+
   Future<void> _loadSongsFromFirestore() async {
     final snapshot = await FirebaseFirestore.instance.collection('hymns').get();
     print("Firestore docs found: ${snapshot.docs.length}");
 
-    final songs = snapshot.docs.map((doc) {
+    final hymnList = snapshot.docs.map((doc) {
       final data = doc.data();
       return {
-        'sr': data['sr']?.toString()?? '',
-        'title': data['title']?.toString()?? '',
-        'Key': data['Key']?.toString()?? '',
-        'Dedicated': data['Dedicated']?.toString()?? '',
-        'year': data['year']?.toString()?? '',
-        'page': data['page']?.toString()?? '',
-        'English': (data['lyrics']?['English']?? '').toString(),
-        'Hindi': (data['lyrics']?['Hindi']?? '').toString(),
-        'Malayalam': (data['lyrics']?['Malayalam']?? '').toString(),
-        'searchText': data['searchText']?.toString()?? '',
+        'sr': data['sr']?.toString() ?? '',
+        'title': data['title']?.toString() ?? '',
+        'Key': data['Key']?.toString() ?? '',
+        'Dedicated': data['Dedicated']?.toString() ?? '',
+        'year': data['year']?.toString() ?? '',
+        'page': data['page']?.toString() ?? '',
+        'English': (data['lyrics']?['English'] ?? '').toString(),
+        'Hindi': (data['lyrics']?['Hindi'] ?? '').toString(),
+        'Malayalam': (data['lyrics']?['Malayalam'] ?? '').toString(),
+        'searchText': data['searchText']?.toString() ?? '',
       };
     }).toList();
 
     setState(() {
-      staticExcelHymns = songs;
+      staticExcelHymns = hymnList; // Changed 'songs' to 'hymnList' so it doesn't conflict
       _loadingSongs = false;
     });
   }
