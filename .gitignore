@@ -46,3 +46,4 @@ app.*.map.json
 node_modules
 app-debug.apk
 *.apk
+.git_backup/
