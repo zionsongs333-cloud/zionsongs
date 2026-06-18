@@ -1,3 +1,7 @@
+buildscript {
+    dependencies {
+        classpath("org.codehaus.groovy:groovy-xml:3.0.19")
+        
 allprojects {
     repositories {
         google()
