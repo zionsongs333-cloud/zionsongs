@@ -1,4 +1,4 @@
-package com.example.zion_songs
+package com.zion.songs
 
 import io.flutter.embedding.android.FlutterActivity
 
