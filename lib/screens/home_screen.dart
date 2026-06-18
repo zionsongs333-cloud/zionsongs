@@ -186,23 +186,31 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             Text(_userChurchScope, style: TextStyle(color: theme.getZoneTextUnselected(context), fontSize: 12)),
           ],
         ),
-        actions: [
+       actions: [
   Padding(
     padding: const EdgeInsets.symmetric(horizontal: 8),
     child: Center(child: Text('Admin', style: TextStyle(color: theme.getZoneText(context), fontSize: 12))),
   ),
   
+  // NEW: Color picker button
   PopupMenuButton<Color>(
     icon: Icon(Icons.palette, color: theme.getZoneText(context)),
     tooltip: 'Change theme color',
     onSelected: (color) => theme.changePrimaryColor(color),
-    itemBuilder: (context) => [
-      Colors.blue, Colors.red, Colors.green, Colors.purple,
-      Colors.orange, Colors.teal, Colors.pink, Colors.indigo,
-    ].map((color) => PopupMenuItem(
-      value: color,
-      child: Container(width: 30, height: 30, decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2))),
-    )).toList(),
+    itemBuilder: (context) => theme.themeColors.map((color) => 
+      PopupMenuItem(
+        value: color,
+        child: Container(
+          width: 30, 
+          height: 30, 
+          decoration: BoxDecoration(
+            color: color, 
+            shape: BoxShape.circle, 
+            border: Border.all(color: Colors.white, width: 2)
+          )
+        )
+      )
+    ).toList(),
   ),
   
   IconButton(
