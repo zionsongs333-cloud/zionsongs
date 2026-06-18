@@ -46,12 +46,18 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build APK arm64 only
-        run: flutter build apk --debug
+      - name: Build APK
+        run: |
+        flutter build apk --debug -v
+        echo "=== CHECKING APK LOCATION ==="
+        find build/app/outputs -name "*.apk" -type f
 
-      - name: Upload APK artifact
+        - name: Upload APK  
         uses: actions/upload-artifact@v4
         with:
-          name: zionsongs-arm64-debug
-          path: build/app/outputs/apk/debug/app-debug.apk
-          retention-days: 7
+         name: zionsongs-debug-apk
+         path: build/app/outputs/apk/debug/app-debug.apk
+        if-no-files-found: warn
+
+      - name: Show Gradle errors
+        run: cat build/app/outputs/logs/manifest-merger-debug-report.txt 2>/dev/null || true
