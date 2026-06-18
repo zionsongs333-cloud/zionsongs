@@ -55,4 +55,3 @@ jobs:
           name: zionsongs-arm64-debug
           path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
           retention-days: 7
-        
