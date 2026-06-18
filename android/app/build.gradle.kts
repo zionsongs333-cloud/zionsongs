@@ -26,10 +26,6 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
-        // Added for 64-bit only APK - new phones
-        ndk {
-            abiFilters += listOf("arm64-v8a")
-        }
 
         
     }
