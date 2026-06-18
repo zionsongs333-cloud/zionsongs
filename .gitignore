@@ -47,3 +47,4 @@ node_modules
 app-debug.apk
 *.apk
 .git_backup/
+flutter/
