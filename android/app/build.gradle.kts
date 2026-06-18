@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.zion.songs"
+    namespace = "com.zion.songs"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
     
