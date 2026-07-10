@@ -4,6 +4,7 @@ import 'medley_controller.dart';
 import 'medley_dialogs.dart';
 import 'medley_repository.dart';
 import 'medley_widgets.dart';
+import '../hymn/hymn_detail_page.dart';
 
 /// ===============================================================
 /// Medley Page
@@ -59,6 +60,38 @@ class _MedleyPageState extends State<MedleyPage> {
     );
   }
 
+  Future<void> _openNodeList(BuildContext context, String title, List<dynamic> nodes) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: ListView.builder(
+            itemCount: nodes.length,
+            itemBuilder: (ctx, i) {
+              final node = nodes[i];
+              return MedleyNodeTile(
+                node: node,
+                onTap: () {
+                  if (node.isFolder) {
+                    _openNodeList(ctx, node.name ?? 'Folder', node.children);
+                  } else if (node.isHymn && node.hymn != null) {
+                    Navigator.push(
+                      ctx,
+                      MaterialPageRoute(
+                        builder: (_) => HymnDetailPage(hymnId: node.hymn!.hymnId),
+                      ),
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -83,9 +116,10 @@ class _MedleyPageState extends State<MedleyPage> {
 
                         return MedleyTile(
                           medley: medley,
-                          onTap: () {
-                            // Wiring to HymnDetailPage will be handled
-                            // by the integration layer.
+                          onTap: () async {
+                            final details = await _controller.getMedley(medley.id);
+                            if (details == null) return;
+                            await _openNodeList(context, details.name, details.children);
                           },
                         );
                       },
