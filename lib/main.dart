@@ -1,69 +1,75 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:provider/provider.dart';
-import 'providers/theme_provider.dart';
+
 import 'firebase_options.dart';
-import 'providers/language_provider.dart';
-import 'providers/hymn_provider.dart';
-import 'providers/favorites_provider.dart';
-import 'providers/viewlist_provider.dart';
-import 'providers/medley_provider.dart';
-import 'config/app_router.dart';
-import 'models/hymn_model.dart';
+import 'feature/home/hymn/app_initializer.dart';
+import 'feature/home/home_page/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: Colors.red,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            details.exceptionAsString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+  };
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-  } catch (e) {
-    print('Firebase initialization error: $e');
-  }
-  
-  await Hive.initFlutter();
-  Hive.registerAdapter(HymnModelAdapter());
-  await Hive.openBox<HymnModel>('hymns');
-  await Hive.openBox('favorites');
-  await Hive.openBox('viewlists');
-  await Hive.openBox('medleys');
 
-  // Wrap entire app with MultiProvider
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => LanguageProvider()),
-        ChangeNotifierProvider(create: (_) => HymnProvider()),
-        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
-        ChangeNotifierProvider(create: (_) => ViewListProvider()),
-        ChangeNotifierProvider(create: (_) => MedleyProvider()),
-      ],
-      child: const ZionSongsApp(),
-    ),
-  );
+    await AppInitializer.init();
+
+    runApp(const MyApp());
+  } catch (e, s) {
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: Colors.red,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                "$e\n\n$s",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class ZionSongsApp extends StatelessWidget {
-  const ZionSongsApp({Key? key}) : super(key: key);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ThemeProvider, LanguageProvider>(
-      builder: (context, themeProvider, languageProvider, _) {
-        return MaterialApp.router(
-          title: 'Zion Songs',
-          theme: themeProvider.lightTheme, 
-          darkTheme: themeProvider.darkTheme, 
-          themeMode: themeProvider.themeMode,
-          locale: Locale(languageProvider.currentLanguage), // ADDED MISSING COMMA HERE
-          supportedLocales: const [Locale('en'), Locale('hi')],
-          routerConfig: AppRouter.router,
-          debugShowCheckedModeBanner: false,
-        );
-      },
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: HomePage(),
     );
   }
 }

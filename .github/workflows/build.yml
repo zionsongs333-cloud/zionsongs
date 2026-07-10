@@ -1,70 +1,52 @@
-name: Build Debug APK arm64 only
+name: Android APK Build
 
 on:
   push:
-    branches: [ main, master ]
-  workflow_dispatch:
+    branches:
+      - main
 
-env:
-  GRADLE_OPTS: "-Xmx6g -XX:MaxMetaspaceSize=2g -Dorg.gradle.jvmargs=-Xmx6g"
-  FLUTTER_VERBOSE: "true"
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          submodules: false
 
-      - name: Set Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      - name: Install Flutter 3.27.4
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.4'
-          channel: 'stable'
-          cache: true
+          flutter-version: 3.44.5
 
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      - name: Clean build cache
-        run: |
-          flutter clean
-          rm -rf ~/.gradle/caches/transforms-* || true
-
-      - name: Flutter pub get
+      - name: Get Packages
         run: flutter pub get
 
-      - name: Build APK
+      - name: Patch Isar Android plugin
         run: |
-          set -o pipefail
-          flutter build apk --debug 2>&1 | tee build.log
-          echo "=== CHECKING APK LOCATION ==="
-          find build -name "*.apk" -type f
-          echo "=== LAST 50 LINES OF LOG ==="
-          tail -50 build.log
+          FILE="$HOME/.pub-cache/hosted/pub.dev/isar_flutter_libs-3.1.0+1/android/build.gradle"
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
+            sed -i '/android {/a\    namespace "dev.isar.isar_flutter_libs"' "$FILE"
+
+            sed -i 's/compileSdkVersion 30/compileSdkVersion 36/' "$FILE"
+
+            cat "$FILE"
+
+      - name: Generate Isar Files
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build APK
+        run: flutter build apk --release
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
