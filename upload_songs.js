@@ -115,7 +115,7 @@ async function uploadData() {
 
     hymn.searchText = transliterate(searchText).toLowerCase();
 
-    await db.collection('hymns').add(hymn);
+    await db.collection('hymns')..doc(hymn.sr).set(hymn);
 
     console.log(`✅ Uploaded: ${hymn.title}`);
   }

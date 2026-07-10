@@ -70,6 +70,8 @@ class _HomePageState extends State<HomePage> {
       dedicated: _filter.dedicated,
       years: _filter.years,
       beats: _filter.beats,
+      styles: _filter.styles,
+      tempos: _filter.tempos,
       tab: _currentTab,
     );
   }
@@ -98,69 +100,181 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onKeyTap() {
-    _showSelectionDialog(
+    _showDynamicMultiSelect(
       title: 'Select Key',
-      items: const [
-        SelectionItem(id: 'Maj', name: 'Maj'),
-        SelectionItem(id: 'Min', name: 'Min'),
-        SelectionItem(id: 'Blank', name: 'Blank'),
-      ],
+      valuesFuture: _repository.getAvailableKeys(),
+      selectedValues: _filter.keys,
       onSelected: (selected) {
-        if (selected == null) return;
-        _filter = _filter.copyWith(keys: {selected});
+        setState(() {
+          _filter = _filter.copyWith(keys: selected);
+          _hymnFuture = _loadHymns();
+        });
       },
     );
   }
 
   void _onDedicatedTap() {
-    _showSelectionDialog(
+    _showDynamicMultiSelect(
       title: 'Select Dedicated',
-      items: const [
-        SelectionItem(id: 'Appa', name: 'Appa'),
-        SelectionItem(id: 'Amma', name: 'Amma'),
-        SelectionItem(id: 'Ayya', name: 'Ayya'),
-        SelectionItem(id: 'Anna', name: 'Anna'),
-        SelectionItem(id: 'Mix', name: 'Mix'),
-        SelectionItem(id: 'Others', name: 'Others'),
-      ],
+      valuesFuture: _repository.getAvailableDedicated(),
+      selectedValues: _filter.dedicated,
       onSelected: (selected) {
-        if (selected == null) return;
-        _filter = _filter.copyWith(dedicated: {selected});
+        setState(() {
+          _filter = _filter.copyWith(dedicated: selected);
+          _hymnFuture = _loadHymns();
+        });
       },
     );
   }
 
   void _onYearTap() {
-    _showSelectionDialog(
+    _showDynamicMultiSelectInt(
       title: 'Select Year',
-      items: const [
-        SelectionItem(id: '2023', name: '2023'),
-        SelectionItem(id: '2022', name: '2022'),
-        SelectionItem(id: '2021', name: '2021'),
-        SelectionItem(id: '2020', name: '2020'),
-      ],
+      valuesFuture: _repository.getAvailableYears(),
+      selectedValues: _filter.years,
       onSelected: (selected) {
-        if (selected == null) return;
-        final year = int.tryParse(selected);
-        if (year == null) return;
-        _filter = _filter.copyWith(years: {year});
+        setState(() {
+          _filter = _filter.copyWith(years: selected);
+          _hymnFuture = _loadHymns();
+        });
       },
     );
   }
 
   void _onBeatTap() {
-    _showSelectionDialog(
+    _showDynamicMultiSelect(
       title: 'Select Beat',
-      items: const [
-        SelectionItem(id: '4/4', name: '4/4'),
-        SelectionItem(id: '3/4', name: '3/4'),
-        SelectionItem(id: '6/8', name: '6/8'),
-      ],
+      valuesFuture: _repository.getAvailableBeats(),
+      selectedValues: _filter.beats,
       onSelected: (selected) {
-        if (selected == null) return;
-        _filter = _filter.copyWith(beats: {selected});
+        setState(() {
+          _filter = _filter.copyWith(beats: selected);
+          _hymnFuture = _loadHymns();
+        });
       },
     );
+  }
+
+  void _onStyleTap() {
+    _showDynamicMultiSelect(
+      title: 'Select Style',
+      valuesFuture: _repository.getAvailableStyles(),
+      selectedValues: _filter.styles,
+      onSelected: (selected) {
+        setState(() {
+          _filter = _filter.copyWith(styles: selected);
+          _hymnFuture = _loadHymns();
+        });
+      },
+    );
+  }
+
+  void _onTempoTap() {
+    _showDynamicMultiSelectInt(
+      title: 'Select Tempo',
+      valuesFuture: _repository.getAvailableTempos(),
+      selectedValues: _filter.tempos,
+      onSelected: (selected) {
+        setState(() {
+          _filter = _filter.copyWith(tempos: selected);
+          _hymnFuture = _loadHymns();
+        });
+      },
+    );
+  }
+
+  Future<void> _showDynamicMultiSelect({
+    required String title,
+    required Future<List<String>> valuesFuture,
+    required Set<String> selectedValues,
+    required void Function(Set<String>) onSelected,
+  }) async {
+    final values = await valuesFuture;
+    final selected = Set<String>.from(selectedValues);
+
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: values.length,
+              itemBuilder: (context, index) {
+                final v = values[index];
+                final checked = selected.contains(v);
+                return CheckboxListTile(
+                  value: checked,
+                  title: Text(v),
+                  onChanged: (c) {
+                    setState(() {
+                      if (c == true) selected.add(v); else selected.remove(v);
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, selected),
+              child: const Text('Done'),
+            )
+          ],
+        );
+      },
+    );
+
+    if (result != null) onSelected(result);
+  }
+
+  Future<void> _showDynamicMultiSelectInt({
+    required String title,
+    required Future<List<int>> valuesFuture,
+    required Set<int> selectedValues,
+    required void Function(Set<int>) onSelected,
+  }) async {
+    final values = await valuesFuture;
+    final selected = Set<int>.from(selectedValues);
+
+    final result = await showDialog<Set<int>>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: values.length,
+              itemBuilder: (context, index) {
+                final v = values[index];
+                final checked = selected.contains(v);
+                return CheckboxListTile(
+                  value: checked,
+                  title: Text(v.toString()),
+                  onChanged: (c) {
+                    setState(() {
+                      if (c == true) selected.add(v); else selected.remove(v);
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, selected),
+              child: const Text('Done'),
+            )
+          ],
+        );
+      },
+    );
+
+    if (result != null) onSelected(result);
   }
 
   void _onResetFilters() {
@@ -172,6 +286,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onTabChanged(models.HomeTab tab) {
+    // Diagnostic
+    // ignore: avoid_print
+    print('Tab changed: $tab');
+
     setState(() {
       _currentTab = tab;
       _filter = const HomeFilter();
@@ -217,6 +335,10 @@ class _HomePageState extends State<HomePage> {
       future: _hymnFuture,
       builder: (context, snapshot) {
         final hymns = snapshot.data ?? [];
+
+        // Diagnostic
+        // ignore: avoid_print
+        print('HomeHymnList received ${hymns.length} hymns');
 
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -274,14 +396,20 @@ class _HomePageState extends State<HomePage> {
                 dedicatedLabel: 'Dedicated',
                 yearLabel: 'Year',
                 beatLabel: 'Beat',
+                styleLabel: 'Style',
+                tempoLabel: 'Tempo',
                 keySelected: _filter.keys.length,
                 dedicatedSelected: _filter.dedicated.length,
                 yearSelected: _filter.years.length,
                 beatSelected: _filter.beats.length,
+                styleSelected: _filter.styles.length,
+                tempoSelected: _filter.tempos.length,
                 onKeyTap: _onKeyTap,
                 onDedicatedTap: _onDedicatedTap,
                 onYearTap: _onYearTap,
                 onBeatTap: _onBeatTap,
+                onStyleTap: _onStyleTap,
+                onTempoTap: _onTempoTap,
                 onReset: _onResetFilters,
               ),
             Expanded(child: _buildHomeContent()),

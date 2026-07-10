@@ -13,6 +13,7 @@ import '../medley/medley_models.dart';
 import '../medley/medley_repository.dart';
 import 'home_repository.dart';
 import 'pdf_export_service.dart';
+import 'theme_service.dart';
 
 class HomeRepositoryImpl implements HomeRepository {
   HomeRepositoryImpl({FirebaseFirestore? firestore})
@@ -38,36 +39,98 @@ class HomeRepositoryImpl implements HomeRepository {
     if (count > 0) return;
 
     try {
+      // Diagnostic
+      // ignore: avoid_print
+      print('Reading collection hymns (bootstrap)');
+
       final snapshot = await _firestore.collection('hymns').get();
+
+      // ignore: avoid_print
+      print('Documents found: ${snapshot.docs.length}');
 
       final hymns = snapshot.docs.map((doc) {
         final data = doc.data();
 
-        return LocalHymn()
+        // ignore: avoid_print
+        // print('Doc ${doc.id} data: $data');
+
+        final lh = LocalHymn()
           ..hymnId = doc.id
           ..title = data['title']?.toString() ?? 'Untitled Hymn'
-          ..originalLyrics = data['lyrics']?.toString() ?? '';
+          ..originalLyrics = (data['lyrics'] ?? data['originalLyrics'])?.toString() ?? '';
+
+        lh.key = (data['key'] ?? data['code'])?.toString();
+        lh.dedicated = data['dedicated']?.toString();
+        lh.year = data['year']?.toString();
+        lh.beat = data['beat']?.toString();
+        lh.style = data['style']?.toString();
+        lh.searchText = (data['searchText'] ?? data['search_text'])?.toString();
+        lh.hindiLyrics = data['Hindi']?.toString();
+        lh.malayalamLyrics = data['Malayalam']?.toString();
+        lh.englishLyrics = data['English']?.toString();
+
+        final tempoVal = data['tempo'];
+        if (tempoVal is int) lh.tempo = tempoVal;
+        if (tempoVal is String) lh.tempo = int.tryParse(tempoVal);
+
+        return lh;
       }).toList();
+
+      // ignore: avoid_print
+      print('Mapped hymns: ${hymns.length}');
 
       if (hymns.isNotEmpty) {
         await AppInitializer.isar.writeTxn(
           () => AppInitializer.isar.localHymns.putAll(hymns),
         );
       }
-    } catch (_) {}
+    } catch (e, s) {
+      // Do not hide exceptions — surface them for debugging
+      // ignore: avoid_print
+      print('Error bootstrapping from Firestore: $e\n$s');
+      rethrow;
+    }
   }
 
-  home.HomeHymn _convertToHomeHymn(
+  Future<home.HomeHymn> _convertToHomeHymn(
     LocalHymn hymn,
     int index, {
     bool favorite = false,
-  }) {
+  }) async {
+    // Try to get user's overrides
+    String? key = hymn.key;
+    String? beat = hymn.beat;
+    String? style = hymn.style;
+    int? tempo = hymn.tempo;
+    String? dedicated = hymn.dedicated;
+    String? year = hymn.year;
+
+    try {
+      final pref = await AppInitializer.isar.userHymnPrefs
+          .filter()
+          .hymnIdEqualTo(hymn.hymnId)
+          .findFirst();
+
+      if (pref != null) {
+        key = pref.manualKey ?? key;
+        beat = pref.beat.isNotEmpty ? pref.beat : beat;
+        style = pref.style.isNotEmpty ? pref.style : style;
+        tempo = pref.tempo != 0 ? pref.tempo : tempo;
+      }
+    } catch (_) {}
+
     return home.HomeHymn(
       hymnId: hymn.hymnId,
       serialNo: index + 1,
       pageNo: 0,
       title: hymn.title,
       favorite: favorite,
+      key: key,
+      dedicated: dedicated,
+      year: year,
+      beat: beat,
+      style: style,
+      tempo: tempo,
     );
   }
 
@@ -81,14 +144,18 @@ class HomeRepositoryImpl implements HomeRepository {
           await AppInitializer.isar.localHymns.where().findAll();
     }
 
-    return localHymns
-        .asMap()
-        .entries
-        .map(
-          (entry) =>
-              _convertToHomeHymn(entry.value, entry.key),
-        )
-        .toList();
+    final list = <home.HomeHymn>[];
+    for (final entry in localHymns.asMap().entries) {
+      final h = await _convertToHomeHymn(entry.value, entry.key);
+      list.add(h);
+    }
+    return list;
+  }
+
+  Future<List<home.HomeHymn>> _returnWithLog(List<home.HomeHymn> hymns) async {
+    // ignore: avoid_print
+    print('Returning hymns: ${hymns.length}');
+    return hymns;
   }
 
   Future<List<home.HomeHymn>> _loadFavoriteHymns() async {
@@ -109,12 +176,12 @@ class HomeRepositoryImpl implements HomeRepository {
         .anyOf(hymnIds, (q, value) => q.hymnIdEqualTo(value))
         .findAll();
 
-    return favorites
-        .asMap()
-        .entries
-        .map((entry) =>
-            _convertToHomeHymn(entry.value, entry.key, favorite: true))
-        .toList();
+    final list = <home.HomeHymn>[];
+    for (final entry in favorites.asMap().entries) {
+      final h = await _convertToHomeHymn(entry.value, entry.key, favorite: true);
+      list.add(h);
+    }
+    return list;
   }
 
   bool _matchesFilter(
@@ -166,7 +233,7 @@ class HomeRepositoryImpl implements HomeRepository {
 
   @override
   Future<List<home.HomeHymn>> getAllHymns() {
-    return _loadLocalHymns();
+    return _loadLocalHymns().then((h) => _returnWithLog(h));
   }
 
   @override
@@ -176,14 +243,84 @@ class HomeRepositoryImpl implements HomeRepository {
     Set<String> dedicated = const {},
     Set<int> years = const {},
     Set<String> beats = const {},
+    Set<String> styles = const {},
+    Set<int> tempos = const {},
     home.HomeTab tab = home.HomeTab.allHymns,
   }) async {
+    // If a keyword is provided, prefer querying Firestore's `searchText`.
+    if (keyword.trim().isNotEmpty) {
+      try {
+        // Diagnostic
+        // ignore: avoid_print
+        print('Searching Firestore collection hymns for keyword: $keyword');
+
+        final snapshot = await _firestore.collection('hymns').get();
+
+        // ignore: avoid_print
+        print('Documents found: ${snapshot.docs.length}');
+
+        final docs = snapshot.docs.where((doc) {
+          final data = doc.data();
+          final st = (data['searchText'] ?? data['search_text'] ?? data['lyrics'] ?? '')
+              .toString()
+              .toLowerCase();
+          return st.contains(keyword.toLowerCase());
+        }).toList();
+
+        // ignore: avoid_print
+        print('Mapped hymns: ${docs.length}');
+
+        final hymns = docs
+            .asMap()
+            .entries
+            .map((entry) {
+              final doc = entry.value;
+              final data = doc.data();
+              return home.HomeHymn(
+                hymnId: doc.id,
+                serialNo: entry.key + 1,
+                pageNo: 0,
+                title: data['title']?.toString() ?? 'Untitled Hymn',
+                favorite: false,
+                key: (data['key'] ?? data['code'])?.toString(),
+                dedicated: data['dedicated']?.toString(),
+                year: data['year']?.toString(),
+                beat: data['beat']?.toString(),
+                style: data['style']?.toString(),
+                tempo: data['tempo'] is int ? data['tempo'] as int : int.tryParse((data['tempo'] ?? '').toString()),
+              );
+            })
+            .toList();
+
+        // ignore: avoid_print
+        print('Returning hymns: ${hymns.length}');
+
+        return hymns;
+      } catch (e, s) {
+        // ignore: avoid_print
+        print('Error searching Firestore: $e\n$s');
+        rethrow;
+      }
+    }
+
     final source = tab == home.HomeTab.favorites
         ? await _loadFavoriteHymns()
         : await _loadLocalHymns();
 
     final filtered = source
         .where((hymn) => _matchesFilter(hymn, keys, dedicated, years, beats))
+        .where((hymn) {
+          if (styles.isNotEmpty) {
+            return hymn.style != null && styles.contains(hymn.style);
+          }
+          return true;
+        })
+        .where((hymn) {
+          if (tempos.isNotEmpty) {
+            return hymn.tempo != null && tempos.contains(hymn.tempo);
+          }
+          return true;
+        })
         .toList();
 
     return _applySearch(filtered, keyword);
@@ -192,6 +329,75 @@ class HomeRepositoryImpl implements HomeRepository {
   @override
   Future<List<ViewList>> getAllViewLists() async {
     return await _viewListRepository.getViewLists();
+  }
+
+  // ============================================================
+  // FILTER DATA IMPLEMENTATIONS
+  // ============================================================
+
+  @override
+  Future<List<String>> getAvailableKeys() async {
+    final hymns = await AppInitializer.isar.localHymns.where().findAll();
+    final set = <String>{};
+    for (final h in hymns) {
+      if (h.key != null && h.key!.trim().isNotEmpty) set.add(h.key!.trim());
+    }
+    return set.toList()..sort();
+  }
+
+  @override
+  Future<List<String>> getAvailableDedicated() async {
+    final hymns = await AppInitializer.isar.localHymns.where().findAll();
+    final set = <String>{};
+    for (final h in hymns) {
+      if (h.dedicated != null && h.dedicated!.trim().isNotEmpty) set.add(h.dedicated!.trim());
+    }
+    return set.toList()..sort();
+  }
+
+  @override
+  Future<List<int>> getAvailableYears() async {
+    final hymns = await AppInitializer.isar.localHymns.where().findAll();
+    final set = <int>{};
+    for (final h in hymns) {
+      if (h.year != null && h.year!.trim().isNotEmpty) {
+        final y = int.tryParse(h.year!.trim());
+        if (y != null) set.add(y);
+      }
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  @override
+  Future<List<String>> getAvailableBeats() async {
+    final hymns = await AppInitializer.isar.localHymns.where().findAll();
+    final set = <String>{};
+    for (final h in hymns) {
+      if (h.beat != null && h.beat!.trim().isNotEmpty) set.add(h.beat!.trim());
+    }
+    return set.toList()..sort();
+  }
+
+  @override
+  Future<List<String>> getAvailableStyles() async {
+    final hymns = await AppInitializer.isar.localHymns.where().findAll();
+    final set = <String>{};
+    for (final h in hymns) {
+      if (h.style != null && h.style!.trim().isNotEmpty) set.add(h.style!.trim());
+    }
+    return set.toList()..sort();
+  }
+
+  @override
+  Future<List<int>> getAvailableTempos() async {
+    final hymns = await AppInitializer.isar.localHymns.where().findAll();
+    final set = <int>{};
+    for (final h in hymns) {
+      if (h.tempo != null) set.add(h.tempo!);
+    }
+    final list = set.toList()..sort();
+    return list;
   }
 
   @override
@@ -292,10 +498,14 @@ class HomeRepositoryImpl implements HomeRepository {
   Future<void> exportExcel() async {}
 
   @override
-  Future<void> changeTheme() async {}
+  Future<void> changeTheme() async {
+    ThemeService.changeTheme();
+  }
 
   @override
-  Future<void> invertTheme() async {}
+  Future<void> invertTheme() async {
+    ThemeService.invertTheme();
+  }
 
   @override
   Future<void> presentationMode() async {}

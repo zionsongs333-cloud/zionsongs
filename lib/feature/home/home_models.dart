@@ -31,6 +31,8 @@ class HomeHymn {
     this.dedicated,
     this.year,
     this.beat,
+    this.style,
+    this.tempo,
   });
 
   final String hymnId;
@@ -50,6 +52,10 @@ class HomeHymn {
   final String? year;
 
   final String? beat;
+  
+  final String? style;
+
+  final int? tempo;
 }
 
 class HomeViewList {

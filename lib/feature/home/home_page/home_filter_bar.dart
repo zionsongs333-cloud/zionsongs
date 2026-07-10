@@ -32,16 +32,22 @@ class HomeFilterBar extends StatelessWidget {
     required this.dedicatedLabel,
     required this.yearLabel,
     required this.beatLabel,
+    required this.styleLabel,
+    required this.tempoLabel,
 
     this.keySelected = 0,
     this.dedicatedSelected = 0,
     this.yearSelected = 0,
     this.beatSelected = 0,
+    this.styleSelected = 0,
+    this.tempoSelected = 0,
 
     this.onKeyTap,
     this.onDedicatedTap,
     this.onYearTap,
     this.onBeatTap,
+    this.onStyleTap,
+    this.onTempoTap,
     this.onReset,
   });
 
@@ -51,6 +57,8 @@ class HomeFilterBar extends StatelessWidget {
   final String dedicatedLabel;
   final String yearLabel;
   final String beatLabel;
+  final String styleLabel;
+  final String tempoLabel;
 
   /// Number of selected items
 
@@ -58,6 +66,8 @@ class HomeFilterBar extends StatelessWidget {
   final int dedicatedSelected;
   final int yearSelected;
   final int beatSelected;
+  final int styleSelected;
+  final int tempoSelected;
 
   /// Callbacks
 
@@ -65,6 +75,8 @@ class HomeFilterBar extends StatelessWidget {
   final VoidCallback? onDedicatedTap;
   final VoidCallback? onYearTap;
   final VoidCallback? onBeatTap;
+  final VoidCallback? onStyleTap;
+  final VoidCallback? onTempoTap;
   final VoidCallback? onReset;
 
   @override
@@ -121,12 +133,34 @@ class HomeFilterBar extends StatelessWidget {
               ),
             ),
 
+            const SizedBox(width: 6),
+
+            Expanded(
+              child: _filterButton(
+                label: styleLabel,
+                count: styleSelected,
+                icon: Icons.style,
+                onPressed: onStyleTap,
+              ),
+            ),
+
+            const SizedBox(width: 6),
+
+            Expanded(
+              child: _filterButton(
+                label: tempoLabel,
+                count: tempoSelected,
+                icon: Icons.speed,
+                onPressed: onTempoTap,
+              ),
+            ),
+
             const SizedBox(width: 8),
 
-            OutlinedButton.icon(
+            IconButton(
               onPressed: onReset,
+              tooltip: 'Reset filters',
               icon: const Icon(Icons.refresh),
-              label: const Text('Reset'),
             ),
           ],
         ),

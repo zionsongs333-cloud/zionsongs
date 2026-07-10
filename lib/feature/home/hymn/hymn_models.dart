@@ -31,6 +31,18 @@ class LocalHymn {
 
   late String originalLyrics;
 
+  // Additional fields synced from Firestore
+  String? key;
+  String? dedicated;
+  String? year;
+  String? beat;
+  String? style;
+  int? tempo;
+  String? searchText;
+  String? hindiLyrics;
+  String? malayalamLyrics;
+  String? englishLyrics;
+
   int createdOn = now();
 
   int modifiedOn = now();

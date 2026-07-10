@@ -30,6 +30,8 @@ abstract class HomeRepository {
     Set<String> dedicated = const {},
     Set<int> years = const {},
     Set<String> beats = const {},
+    Set<String> styles = const {},
+    Set<int> tempos = const {},
     HomeTab tab = HomeTab.allHymns,
   });
 
@@ -67,6 +69,17 @@ abstract class HomeRepository {
 
   /// New method to fetch all medleys for selection dialogs
   Future<List<Medley>> getAllMedleys();
+
+  // ============================================================
+  // FILTER DATA
+  // ============================================================
+
+  Future<List<String>> getAvailableKeys();
+  Future<List<String>> getAvailableDedicated();
+  Future<List<int>> getAvailableYears();
+  Future<List<String>> getAvailableBeats();
+  Future<List<String>> getAvailableStyles();
+  Future<List<int>> getAvailableTempos();
 
   // ============================================================
   // EXPORT

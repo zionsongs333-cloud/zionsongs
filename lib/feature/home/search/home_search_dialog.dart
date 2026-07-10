@@ -23,7 +23,7 @@ class _HomeSearchDialogState extends State<HomeSearchDialog> {
     super.initState();
 
     _controller = HomeSearchController(
-      repository: HomeSearchRepository(widget.isar),
+      repository: HomeSearchRepository(isar: widget.isar),
     );
 
     _controller.addListener(_refresh);

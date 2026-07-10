@@ -99,6 +99,8 @@ class HomeController {
   dedicated: filter.dedicated,
   years: filter.years,
   beats: filter.beats,
+  styles: filter.styles,
+  tempos: filter.tempos,
   tab: state.currentTab,
 );
   }
@@ -112,6 +114,8 @@ class HomeController {
       dedicated: filter.dedicated,
       years: filter.years,
       beats: filter.beats,
+      styles: filter.styles,
+      tempos: filter.tempos,
       tab: state.currentTab,
     );
   }
@@ -129,6 +133,8 @@ class HomeController {
       dedicated: filter.dedicated,
       years: filter.years,
       beats: filter.beats,
+      styles: filter.styles,
+      tempos: filter.tempos,
       tab: state.currentTab,
     );
   }
@@ -157,6 +163,8 @@ class HomeController {
       dedicated: filter.dedicated,
       years: filter.years,
       beats: filter.beats,
+      styles: filter.styles,
+      tempos: filter.tempos,
       tab: tab,
     );
   }

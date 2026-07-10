@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'feature/home/hymn/app_initializer.dart';
 import 'feature/home/home_page/home_page.dart';
+import 'feature/home/app_bar/theme_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,17 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
+    // Diagnostic log
+    // This will appear in the debug console when Firebase initializes
+    // and helps confirm Firebase is ready before HomePage is opened.
+    // ignore: avoid_print
+    print('Firebase initialized');
+
     await AppInitializer.init();
+
+    // Diagnostic log for local DB
+    // ignore: avoid_print
+    print('Isar initialized');
 
     runApp(const MyApp());
   } catch (e, s) {
@@ -67,9 +78,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: HomePage(),
+    return ValueListenableBuilder(
+      valueListenable: ThemeService.mode,
+      builder: (context, ThemeMode mode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          themeMode: mode,
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          home: const HomePage(),
+        );
+      },
     );
   }
 }

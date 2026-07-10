@@ -19,9 +19,11 @@
 class HomeFilter {
   const HomeFilter({
     this.keys = const <String>{},
-    this.dedicated = const <String>{},
-    this.years = const <int>{},
-    this.beats = const <String>{},
+      this.dedicated = const <String>{},
+      this.years = const <int>{},
+      this.beats = const <String>{},
+      this.styles = const <String>{},
+      this.tempos = const <int>{},
   });
 
   /// ===========================================================
@@ -60,6 +62,18 @@ class HomeFilter {
 
   final Set<String> beats;
 
+  /// ==========================================================
+  /// STYLE
+  /// ===========================================================
+
+  final Set<String> styles;
+
+  /// ==========================================================
+  /// TEMPO
+  /// ===========================================================
+
+  final Set<int> tempos;
+
   // ===========================================================
   // HELPERS
   // ===========================================================
@@ -68,7 +82,9 @@ class HomeFilter {
     return keys.isEmpty &&
         dedicated.isEmpty &&
         years.isEmpty &&
-        beats.isEmpty;
+      beats.isEmpty &&
+      styles.isEmpty &&
+      tempos.isEmpty;
   }
 
   bool get hasFilters => !isEmpty;
@@ -82,12 +98,16 @@ class HomeFilter {
     Set<String>? dedicated,
     Set<int>? years,
     Set<String>? beats,
+    Set<String>? styles,
+    Set<int>? tempos,
   }) {
     return HomeFilter(
       keys: keys ?? this.keys,
       dedicated: dedicated ?? this.dedicated,
       years: years ?? this.years,
       beats: beats ?? this.beats,
+      styles: styles ?? this.styles,
+      tempos: tempos ?? this.tempos,
     );
   }
 
