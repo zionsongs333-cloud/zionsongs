@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "firebase-admin": "^14.0.0",
-    "transliteration": "^2.6.1"
-  }
-}

@@ -48,3 +48,4 @@ app-debug.apk
 *.apk
 .git_backup/
 flutter/
+lib/firebase/serviceAccountKey.json
