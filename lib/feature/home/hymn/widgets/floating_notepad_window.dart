@@ -28,7 +28,7 @@ class FloatingNotepadWindow extends StatefulWidget {
 
 class _FloatingNotepadWindowState extends State<FloatingNotepadWindow> {
   Offset _position = const Offset(40, 120);
-  Size _size = const Size(320, 360);
+  Size _size = const Size(280, 220);
   bool _expanded = true;
   UserNote? _note;
   final TextEditingController _controller = TextEditingController();
@@ -102,6 +102,11 @@ class _FloatingNotepadWindowState extends State<FloatingNotepadWindow> {
 
   Future<void> _saveAsFavorites() async {
     await _saveNote(noteType: NOTE_TYPE_FAVORITES, folderId: 'root');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Saved to Favorites')),
+    );
+    widget.onSaved();
+    widget.onClosed();
   }
 
   Future<void> _saveAsDestination(String type) async {
@@ -131,6 +136,12 @@ class _FloatingNotepadWindowState extends State<FloatingNotepadWindow> {
         onPanUpdate: (details) {
           setState(() {
             _position += details.delta;
+            // keep on-screen
+            final mq = MediaQuery.of(context).size;
+            _position = Offset(
+              _position.dx.clamp(0.0, mq.width - _size.width),
+              _position.dy.clamp(0.0, mq.height - 60),
+            );
           });
           _updatePrefs();
         },
@@ -139,16 +150,55 @@ class _FloatingNotepadWindowState extends State<FloatingNotepadWindow> {
           borderRadius: BorderRadius.circular(16),
           child: Container(
             width: _size.width,
-            height: _expanded ? _size.height : 60,
+            height: _expanded ? _size.height : 56,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.black12),
             ),
-            child: Column(
+            child: Stack(
               children: [
-                _buildHeader(context),
-                if (_expanded) _buildBody(context),
+                Column(
+                  children: [
+                    // compact: no large header, only body
+                    if (_expanded) Expanded(child: _buildBody(context)),
+                    if (!_expanded)
+                      SizedBox(
+                        height: 56,
+                        child: Center(
+                          child: IconButton(
+                            icon: const Icon(Icons.sticky_note_2),
+                            onPressed: () {
+                              setState(() => _expanded = true);
+                              _updatePrefs();
+                            },
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                // resize handle
+                Positioned(
+                  right: 4,
+                  bottom: 4,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onPanUpdate: (d) {
+                      setState(() {
+                        final mq = MediaQuery.of(context).size;
+                        final newW = (_size.width + d.delta.dx).clamp(200.0, mq.width - 20);
+                        final newH = (_size.height + d.delta.dy).clamp(120.0, mq.height - 20);
+                        _size = Size(newW, newH);
+                      });
+                      _updatePrefs();
+                    },
+                    child: const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Icon(Icons.drag_handle, size: 18, color: Colors.black45),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -157,44 +207,7 @@ class _FloatingNotepadWindowState extends State<FloatingNotepadWindow> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFAFAFA),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.sticky_note_2, color: Colors.black87),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              widget.hymnTitle,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            icon: Icon(_expanded ? Icons.expand_more : Icons.expand_less),
-            onPressed: () {
-              setState(() {
-                _expanded = !_expanded;
-              });
-              _updatePrefs();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () {
-              widget.onClosed();
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   Widget _buildBody(BuildContext context) {
     return Expanded(
@@ -217,30 +230,102 @@ class _FloatingNotepadWindowState extends State<FloatingNotepadWindow> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.save),
-                  label: const Text('Save to Favorites'),
-                  onPressed: _saving ? null : _saveAsFavorites,
+                TextButton(
+                  onPressed: _saving ? null : _onDiscard,
+                  child: const Text('Discard'),
                 ),
                 const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.list),
-                  label: const Text('Save to View List'),
-                  onPressed: _saving ? null : () => _saveAsDestination(NOTE_TYPE_VIEWLIST),
+                ElevatedButton(
+                  onPressed: _saving ? null : _onSavePressed,
+                  child: const Text('Save'),
                 ),
-                const SizedBox(width: 8),
-                if (AuthService.isAdmin)
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.queue_music),
-                    label: const Text('Save to Medley'),
-                    onPressed: _saving ? null : () => _saveAsDestination(NOTE_TYPE_MEDLEY),
-                  ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _onSavePressed() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    final choice = await showDialog<String?>(
+      context: context,
+      builder: (_) => SimpleDialog(
+        title: const Text('Save As'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, NOTE_TYPE_FAVORITES),
+            child: const Text('Favorites'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, NOTE_TYPE_VIEWLIST),
+            child: const Text('View List'),
+          ),
+          if (AuthService.isAdmin)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, NOTE_TYPE_MEDLEY),
+              child: const Text('Medley'),
+            ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null) return;
+
+    setState(() => _saving = true);
+    try {
+      if (choice == NOTE_TYPE_FAVORITES) {
+        await _saveNote(noteType: NOTE_TYPE_FAVORITES, folderId: 'root');
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Favorites')));
+        widget.onSaved();
+        widget.onClosed();
+      } else if (choice == NOTE_TYPE_VIEWLIST || choice == NOTE_TYPE_MEDLEY) {
+        // Open folder explorer and pass current content so it can save directly
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => FolderExplorer(
+            isar: widget.isar,
+            hymnId: widget.hymnId,
+            hymnTitle: widget.hymnTitle,
+            type: choice,
+            initialContent: _controller.text,
+            onChanged: widget.onSaved,
+          ),
+        ));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
+        widget.onSaved();
+        widget.onClosed();
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _onDiscard() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      widget.onClosed();
+      return;
+    }
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Discard Note?'),
+        content: const Text('You have unsaved text. Discard?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Discard')),
+        ],
+      ),
+    );
+    if (confirm == true) widget.onClosed();
   }
 }

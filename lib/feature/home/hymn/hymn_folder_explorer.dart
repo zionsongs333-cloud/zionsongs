@@ -7,21 +7,25 @@ import 'hymn_auth_service.dart';
 
 const _uuid = Uuid(); 
 
-class FolderExplorer extends StatefulWidget { 
-  final Isar isar; 
-  final String hymnId; 
-  final String hymnTitle; 
-  final String type; 
-  final VoidCallback onChanged; 
-  
+class FolderExplorer extends StatefulWidget {
+  final Isar isar;
+  final String hymnId;
+  final String hymnTitle;
+  final String type;
+  final VoidCallback onChanged;
+  // Optional initial content: if provided, FolderExplorer will save that
+  // content directly into the chosen folder instead of prompting again.
+  final String? initialContent;
+
   const FolderExplorer({
-    super.key, 
-    required this.isar, 
-    required this.hymnId, 
-    required this.hymnTitle, 
-    required this.type, 
-    required this.onChanged
-  }); 
+    super.key,
+    required this.isar,
+    required this.hymnId,
+    required this.hymnTitle,
+    required this.type,
+    required this.onChanged,
+    this.initialContent,
+  });
   
   @override 
   State<FolderExplorer> createState() => _FolderExplorerState(); 
@@ -37,44 +41,50 @@ class _FolderExplorerState extends State<FolderExplorer> {
     .userIdEqualTo(AuthService.userId)
     .findAll();
   
-  Future<void> _saveNote(String folderId) async { 
-    final controller = TextEditingController(); 
-    final content = await showDialog<String>(
-      context: context, 
-      builder: (_) => AlertDialog(
-        title: const Text("New Note"), 
-        content: TextField(controller: controller), 
-        actions: [
-          TextButton(
-            onPressed: ()=>Navigator.pop(context), 
-            child: const Text("Cancel")
-          ), 
-          TextButton(
-            onPressed: ()=>Navigator.pop(context, controller.text), 
-            child: const Text("Save")
-          )
-        ]
-      )
-    ); 
-    
-    if(content == null || content.isEmpty) return; 
-    
+  Future<void> _saveNote(String folderId, [String? content]) async {
+    String? finalContent = content;
+    if (finalContent == null) {
+      final controller = TextEditingController();
+      finalContent = await showDialog<String>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("New Note"),
+          content: TextField(controller: controller),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text("Save"),
+            )
+          ],
+        ),
+      );
+    }
+
+    if (finalContent == null || finalContent.isEmpty) return;
+
     final note = UserNote()
       ..noteId = _uuid.v4()
       ..hymnId = widget.hymnId
       ..folderId = folderId
       ..title = "Note"
-      ..content = content
+      ..content = finalContent
       ..userId = AuthService.userId
       ..noteType = widget.type
       ..createdOn = now()
       ..modifiedOn = now()
-      ..syncStatus = SyncStatus.pending; 
-    
-    await widget.isar.writeTxn(() => widget.isar.userNotes.put(note)); 
-    SyncLogic.attemptSync(widget.isar, AuthService.userId); 
-    widget.onChanged(); 
-  } 
+      ..syncStatus = SyncStatus.pending;
+
+    await widget.isar.writeTxn(() => widget.isar.userNotes.put(note));
+    SyncLogic.attemptSync(widget.isar, AuthService.userId);
+    widget.onChanged();
+    // Close the explorer after a successful save when invoked programmatically
+    // or by the user.
+    if (mounted) Navigator.pop(context);
+  }
   
   @override 
   Widget build(BuildContext context) { 
